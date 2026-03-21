@@ -10,8 +10,11 @@ from typing import Optional
 from .fetchers import (
     EventbriteFetcher,
     FeverFetcher,
+    IaBiletFetcher,
     LevCinemaFetcher,
     NYCOpenDataFetcher,
+    RAFetcher,
+    SongkickFetcher,
     TicketmasterFetcher,
     TimeOutILFetcher,
     TLVMunicipalityFetcher,
@@ -33,10 +36,9 @@ _FETCHER_REGISTRY = {
     "timeout_il":       TimeOutILFetcher,
     "fever":            FeverFetcher,
     "xceed":            XceedFetcher,
-    # Bucharest fetchers (stubs — not implemented yet):
-    # "iabilet":        IaBiletFetcher,
-    # "songkick":       SongkickFetcher,
-    # "ra":             ResidentAdvisorFetcher,
+    "iabilet":          IaBiletFetcher,
+    "songkick":         SongkickFetcher,
+    "ra":               RAFetcher,
 }
 
 # Derive City → fetchers from registry

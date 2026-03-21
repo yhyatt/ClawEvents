@@ -24,6 +24,7 @@ _CITY_LOCATIONS: dict[City, str] = {
     City.TEL_AVIV:  "Tel Aviv, Israel",
     City.BARCELONA: "Barcelona, Spain",
     City.NEW_YORK:  "New York, NY, United States",
+    City.BUCHAREST: "Bucharest, Romania",
 }
 
 # Eventbrite category IDs
@@ -71,7 +72,7 @@ def _parse_dt(val: Optional[dict]) -> Optional[datetime]:
 
 class EventbriteFetcher(BaseFetcher):
     source_name = "eventbrite"
-    supported_cities = [City.TEL_AVIV, City.BARCELONA, City.NEW_YORK]
+    supported_cities = [City.TEL_AVIV, City.BARCELONA, City.NEW_YORK, City.BUCHAREST]
 
     def __init__(self, token: Optional[str] = None):
         self.token = token or os.environ.get("EVENTBRITE_TOKEN", "")

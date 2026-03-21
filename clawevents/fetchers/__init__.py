@@ -6,6 +6,9 @@ from .nyc_open_data   import NYCOpenDataFetcher
 from .timeout_il      import TimeOutILFetcher
 from .fever           import FeverFetcher
 from .xceed           import XceedFetcher
+from .iabilet         import IaBiletFetcher
+from .songkick        import SongkickFetcher
+from .ra              import RAFetcher
 
 __all__ = [
     "TLVMunicipalityFetcher",
@@ -16,4 +19,7 @@ __all__ = [
     "TimeOutILFetcher",
     "FeverFetcher",
     "XceedFetcher",
+    "IaBiletFetcher",
+    "SongkickFetcher",
+    "RAFetcher",
 ]
