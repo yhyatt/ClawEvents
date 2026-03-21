@@ -15,15 +15,20 @@ from datetime import datetime, timedelta
 
 from .engine import ClawEventsEngine
 from .models import AgeGroup, City, EventType, TimeOfDay
+from .city_registry import CITIES
 
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
 
 
-_CITY_ALIASES = {
-    "tel-aviv": City.TEL_AVIV, "telaviv": City.TEL_AVIV, "tlv": City.TEL_AVIV,
-    "barcelona": City.BARCELONA, "bcn": City.BARCELONA,
-    "new-york": City.NEW_YORK, "nyc": City.NEW_YORK, "newyork": City.NEW_YORK,
-}
+# Derive city aliases from registry
+# Only include cities that exist in the City enum
+_CITY_ALIASES: dict[str, City] = {}
+_CITY_ENUM_VALUES = {c.value for c in City}
+for _cfg in CITIES.values():
+    if _cfg.slug in _CITY_ENUM_VALUES:
+        city_enum = City(_cfg.slug)
+        for _alias in _cfg.aliases:
+            _CITY_ALIASES[_alias.lower()] = city_enum
 
 _TYPE_ALIASES = {
     "concert":   EventType.CONCERT,   "music":      EventType.CONCERT,
@@ -151,7 +156,10 @@ def run():
 
     print(f"\n🎉 Found {len(events)} events\n")
     for i, e in enumerate(events, 1):
-        city_emoji = {"tel-aviv": "🇮🇱", "barcelona": "🇪🇸", "new-york": "🗽"}.get(e.city.value, "📍")
+        city_emoji = {
+            "tel-aviv": "🇮🇱", "barcelona": "🇪🇸", "new-york": "🗽",
+            "bucharest": "🇷🇴", "marseille": "🇫🇷", "messina": "🇮🇹", "valletta": "🇲🇹",
+        }.get(e.city.value, "📍")
         types_str  = ", ".join(t.value for t in e.event_types)
         time_str   = e.start.strftime("%-d %b %H:%M") if e.start else "TBA"
         price_str  = f" · {e.price_display}" if e.price_display else ""

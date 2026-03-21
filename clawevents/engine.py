@@ -19,16 +19,11 @@ from .fetchers import (
 )
 from .filters import deduplicate, filter_events, rank_events
 from .models import AgeGroup, City, Event, EventType, TimeOfDay
+from .city_registry import CITIES
 
 log = logging.getLogger(__name__)
 
-# City → which fetchers to use (in priority order)
-_CITY_FETCHERS: dict[City, list] = {
-    City.TEL_AVIV:  ["tlv_municipality", "eventbrite", "lev_cinema", "timeout_il"],
-    City.BARCELONA: ["ticketmaster", "eventbrite", "fever", "xceed"],
-    City.NEW_YORK:  ["ticketmaster", "eventbrite", "nyc_open_data", "fever"],
-}
-
+# Fetcher name → class mapping (only instantiate fetchers we have implementations for)
 _FETCHER_REGISTRY = {
     "tlv_municipality": TLVMunicipalityFetcher,
     "ticketmaster":     TicketmasterFetcher,
@@ -38,6 +33,19 @@ _FETCHER_REGISTRY = {
     "timeout_il":       TimeOutILFetcher,
     "fever":            FeverFetcher,
     "xceed":            XceedFetcher,
+    # Bucharest fetchers (stubs — not implemented yet):
+    # "iabilet":        IaBiletFetcher,
+    # "songkick":       SongkickFetcher,
+    # "ra":             ResidentAdvisorFetcher,
+}
+
+# Derive City → fetchers from registry
+# Only include cities that exist in the City enum
+_CITY_ENUM_VALUES = {c.value for c in City}
+_CITY_FETCHERS: dict[City, list[str]] = {
+    City(cfg.slug): cfg.event_fetchers
+    for cfg in CITIES.values()
+    if cfg.slug in _CITY_ENUM_VALUES
 }
 
 

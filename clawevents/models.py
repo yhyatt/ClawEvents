@@ -11,6 +11,10 @@ class City(str, Enum):
     TEL_AVIV  = "tel-aviv"
     BARCELONA = "barcelona"
     NEW_YORK  = "new-york"
+    BUCHAREST = "bucharest"
+    MARSEILLE = "marseille"
+    MESSINA   = "messina"
+    VALLETTA  = "valletta"
 
 
 class EventType(str, Enum):
