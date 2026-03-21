@@ -238,21 +238,49 @@ class SongkickFetcher(BaseFetcher):
         events: list[Event] = []
         seen_urls = set()
         
-        # Look for event listings - Songkick uses `event-listings-element` class
-        event_items = soup.find_all("li", class_="event-listings-element")
+        # Songkick real structure (verified 2026-03-21):
+        # <li class="event">
+        #   <a class="col" href="/concerts/ID-slug">
+        #     <span class="name">ARTIST</span>
+        #     <span class="venue">VENUE</span>
+        #   </a>
+        # </li>
+        # Date not embedded per event — appears as section headers in the page
+        # Extract from concert URL or page structure
+        event_items = soup.find_all("li", class_="event")
         
         for item in event_items:
             try:
-                # Find the datetime from <time> element
-                time_elem = item.find("time")
+                # Find the concert link
+                link = item.find("a", href=re.compile(r"/concerts/"))
+                if not link:
+                    continue
+                
+                href = link.get("href", "")
+                if href in seen_urls:
+                    continue
+                seen_urls.add(href)
+                
+                # Artist/title from .name span
+                name_span = link.find("span", class_="name")
+                title = name_span.get_text(strip=True) if name_span else link.get_text(strip=True)
+                if not title:
+                    continue
+                
+                # Venue from .venue span
+                venue_span = link.find("span", class_="venue")
+                venue_name = venue_span.get_text(strip=True) if venue_span else ""
+                
+                event_url = href if href.startswith("http") else f"{WEB_BASE}{href}"
+                
+                # Date: look for <time> in this item or a nearby section header
                 event_date = None
+                time_elem = item.find("time")
                 if time_elem:
                     dt_attr = time_elem.get("datetime", "")
                     if dt_attr:
                         try:
-                            # Handle formats like "2026-03-21" or "2026-03-21T21:00:00+0200"
                             if "T" in dt_attr:
-                                # Normalise +HHMM → +HH:MM for fromisoformat
                                 dt_attr_norm = re.sub(r"([+-])(\d{2})(\d{2})$", r"\1\2:\3", dt_attr)
                                 event_date = datetime.fromisoformat(dt_attr_norm).replace(tzinfo=None)
                             else:
@@ -260,47 +288,13 @@ class SongkickFetcher(BaseFetcher):
                         except ValueError:
                             pass
                 
-                # Fallback: try title attribute
-                if not event_date:
-                    title_attr = item.get("title", "")
-                    event_date = _scrape_date(title_attr)
-                
-                # Filter by date range
+                # Filter by date range (only when date available)
                 if event_date:
                     event_day = event_date.date()
                     start_day = start.date()
                     end_day = end.date()
                     if event_day < start_day or event_day > end_day:
                         continue
-                
-                # Find all concert links - there may be multiple, pick the one with text
-                concert_links = item.find_all("a", href=re.compile(r"/concerts/|/festivals/"))
-                if not concert_links:
-                    continue
-                
-                # Find the link with actual text content (title)
-                href = ""
-                title = ""
-                for cl in concert_links:
-                    link_href = cl.get("href", "")
-                    link_text = cl.get_text(strip=True)
-                    if not href:
-                        href = link_href  # Take first href
-                    if link_text and len(link_text) > len(title):
-                        title = link_text  # Take longest text
-                
-                if href in seen_urls:
-                    continue
-                seen_urls.add(href)
-                
-                if not title:
-                    continue
-                
-                event_url = href if href.startswith("http") else f"{WEB_BASE}{href}"
-                
-                # Find venue link
-                venue_link = item.find("a", href=re.compile(r"/venues/"))
-                venue_name = venue_link.get_text(strip=True) if venue_link else ""
                 
                 # Extract ID from URL like /concerts/43076542-acid-arab-at-club-control
                 id_match = re.search(r"/concerts/(\d+)", href)

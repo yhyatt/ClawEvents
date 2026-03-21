@@ -157,78 +157,72 @@ class IaBiletFetcher(BaseFetcher):
             return []
         
         events: list[Event] = []
-        
-        # iaBilet structure: Event URLs follow pattern /bilete-EVENTNAME-ID/
-        # where ID is 5+ digits. We filter out venue links (-venue-) and city links (in-)
+        seen_ids: set[str] = set()
+
+        # iaBilet real structure (verified 2026-03-21):
+        # <div class="row event-list-item event-is-future ..." data-likable-item="event/ID">
+        #   <a href="/bilete-SLUG-ID/?hallId=...">
+        #     <img alt="EVENT TITLE" .../>
+        #   </a>
+        # </div>
+        # Date pattern appears as text within the container: "21 mar" / "31 oct '25"
         event_pattern = re.compile(r"^/bilete-(?!in-)(?!.*-venue-)[^/]+-(\d{5,})/")
-        event_links = soup.find_all("a", href=event_pattern)
         
-        # Group links by URL to find the best title for each event
-        from collections import defaultdict
-        by_href: dict[str, list] = defaultdict(list)
-        for link in event_links:
-            href = link.get("href", "").split("?")[0]  # Remove query params
-            by_href[href].append(link)
+        # Find event container divs
+        items = soup.find_all("div", attrs={"data-event-list": "item"})
         
-        for href, links in by_href.items():
+        for item in items:
             try:
-                # Find the best title from all links to this event
-                best_title = ""
-                for link in links:
-                    text = link.get_text(strip=True)
-                    # Skip utility text
-                    if text and text.lower() not in ["ia bilet", "vezi mai mult", "bilete", "cumpara", ""]:
-                        if len(text) > len(best_title):
-                            best_title = text
-                
-                if not best_title or len(best_title) < 3:
+                # Find the event link
+                link = item.find("a", href=event_pattern)
+                if not link:
                     continue
                 
-                title = best_title
+                href = link.get("href", "").split("?")[0]
+                
+                # Extract ID from URL or data attribute
+                id_match = re.search(r"-(\d{5,})/", href)
+                event_id = f"iabilet_{id_match.group(1)}" if id_match else f"iabilet_{hash(href) & 0xFFFFFFFF:08x}"
+                
+                if event_id in seen_ids:
+                    continue
+                seen_ids.add(event_id)
+                
+                # Title: prefer img alt, fall back to link text
+                img = link.find("img")
+                title = ""
+                if img and img.get("alt"):
+                    title = img["alt"].strip()
+                if not title:
+                    title = link.get_text(strip=True)
+                if not title or len(title) < 3:
+                    # Try data-likable-item attribute to get event name from nearby h-tags
+                    h = item.find(["h2", "h3", "h4"])
+                    title = h.get_text(strip=True) if h else ""
+                if not title or len(title) < 3:
+                    continue
+                
                 event_url = urljoin(BASE_URL, href)
                 
-                # Try to find date info nearby
-                # Look in parent/sibling elements for date patterns
-                date_text = ""
-                for link in links:
-                    parent = link.parent
-                    for _ in range(5):  # Check up to 5 parent levels
-                        if parent:
-                            text = parent.get_text(" ", strip=True)
-                            # Look for date patterns like "21 mar" or "5 apr '25"
-                            date_match = re.search(
-                                r"(\d{1,2})\s+(ian|feb|mar|apr|mai|iun|iul|aug|sep|oct|nov|dec)(?:\s+['\"]?(\d{2,4}))?",
-                                text, re.I
-                            )
-                            if date_match:
-                                date_text = date_match.group(0)
-                                break
-                            parent = parent.parent
-                    if date_text:
-                        break
-                
+                # Date: look for Romanian date pattern in item text
+                item_text = item.get_text(" ", strip=True)
+                date_match = re.search(
+                    r"(\d{1,2})\s+(ian|feb|mar|apr|mai|iun|iul|aug|sep|oct|nov|dec)(?:\s+['\"]?(\d{2,4}))?",
+                    item_text, re.I
+                )
+                date_text = date_match.group(0) if date_match else ""
                 event_date = _parse_ro_date(date_text) if date_text else None
                 
-                # Filter by date range (if we have a date)
-                # Compare dates only, not times, since events may be parsed as midnight
+                # Filter by date range (only if we have a date)
                 if event_date:
-                    event_day = event_date.date()
-                    start_day = start.date()
-                    end_day = end.date()
-                    if event_day < start_day or event_day > end_day:
+                    if event_date.date() < start.date() or event_date.date() > end.date():
                         continue
                 
                 types = _classify_types(title)
-                
-                # Filter by event types if specified
                 if event_types and not any(t in types for t in event_types):
                     continue
                 
                 age_groups = _classify_age(title)
-                
-                # Extract event ID from URL
-                id_match = re.search(r"-(\d{5,})/", href)
-                event_id = f"iabilet_{id_match.group(1)}" if id_match else f"iabilet_{hash(href) & 0xFFFFFFFF:08x}"
                 
                 events.append(Event(
                     id=event_id,

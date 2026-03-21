@@ -32,34 +32,36 @@ AREA_IDS = {
 # GraphQL query for event listings
 # We filter by listingDate >= today to get events that were recently listed
 # (which generally means upcoming events). Then filter by event date in code.
-EVENT_QUERY = """
-query EventListings($areaId: Int!, $listingDateStart: DateTime!, $limit: Int!) {
+def _build_ra_query(area_id: int, listing_date_start: str, limit: int) -> str:
+    """Build RA GraphQL query with inline date (RA uses DateTime scalar, not String)."""
+    return f"""
+{{
   eventListings(
-    filters: {
-      areas: {eq: $areaId}
-      listingDate: {gte: $listingDateStart}
-    }
-    pageSize: $limit
-  ) {
-    data {
+    filters: {{
+      areas: {{eq: {area_id}}}
+      listingDate: {{gte: "{listing_date_start}"}}
+    }}
+    pageSize: {limit}
+  ) {{
+    data {{
       id
       listingDate
-      event {
+      event {{
         title
         date
         startTime
         contentUrl
-        venue {
+        venue {{
           name
           address
-        }
-        images {
+        }}
+        images {{
           filename
-        }
-      }
-    }
-  }
-}
+        }}
+      }}
+    }}
+  }}
+}}
 """
 
 
@@ -104,10 +106,11 @@ class RAFetcher(BaseFetcher):
         area_id = AREA_IDS[city]
         
         # Format dates for GraphQL
-        # We use listingDate to get recently listed events, then filter by event date in code
-        # Use a start date 30 days ago to catch events listed recently
+        # We filter by listingDate >= 7 days before the event window start.
+        # RA sorts results by listingDate ascending, so events listed recently will
+        # include all events up to ~4 weeks ahead. Then we client-side filter by event date.
         from datetime import timedelta
-        listing_start = (start - timedelta(days=30)).strftime("%Y-%m-%d")
+        listing_start = (start - timedelta(days=7)).strftime("%Y-%m-%d")
         
         headers = {
             "Content-Type": "application/json",
@@ -115,13 +118,9 @@ class RAFetcher(BaseFetcher):
             "Referer": "https://ra.co/",
         }
         
+        fetch_limit = 100  # RA max is 100 per page
         payload = {
-            "query": EVENT_QUERY,
-            "variables": {
-                "areaId": area_id,
-                "listingDateStart": listing_start,
-                "limit": min(limit * 3, 200),  # Fetch more to allow for date filtering
-            },
+            "query": _build_ra_query(area_id, listing_start, fetch_limit),
         }
         
         try:
