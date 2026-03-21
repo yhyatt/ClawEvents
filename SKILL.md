@@ -1,7 +1,7 @@
 ---
 name: clawevents
-description: Multi-city event discovery for Tel Aviv, Barcelona, and New York. Searches concerts, jazz, cinema, theatre, nightlife, family events, comedy, art, and festivals. Supports filtering by age group (kids/family/adults), time of day (morning/afternoon/evening/late-night), date range, and free-only. Returns ranked, deduplicated results from multiple sources per city.
-version: 0.1.0
+description: Multi-city event discovery for Tel Aviv, Barcelona, New York, and Bucharest. Searches concerts, jazz, cinema, theatre, nightlife, family events, comedy, art, and festivals. Supports filtering by age group (kids/family/adults), time of day (morning/afternoon/evening/late-night), date range, and free-only. Returns ranked, deduplicated results from multiple sources per city. Bucharest supported via iaBilet.ro (Romanian ticketing), Songkick (concerts), and Resident Advisor RA (nightlife/electronic).
+version: 0.2.0
 homepage: https://github.com/yhyatt/clawevents
 metadata: {"kai": {"emoji": "🎉", "category": "lifestyle", "cities": ["tel-aviv", "barcelona", "new-york"]}}
 ---
