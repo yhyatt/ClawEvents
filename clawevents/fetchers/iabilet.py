@@ -12,7 +12,13 @@ from typing import Optional
 from urllib.parse import urljoin
 
 import requests
-from bs4 import BeautifulSoup
+
+try:
+    from bs4 import BeautifulSoup
+    _BS4_AVAILABLE = True
+except ImportError:
+    _BS4_AVAILABLE = False
+    BeautifulSoup = None  # type: ignore
 
 from ..models import AgeGroup, City, Event, EventType
 from .base import BaseFetcher
@@ -123,6 +129,10 @@ class IaBiletFetcher(BaseFetcher):
         event_types: Optional[list[EventType]] = None,
         limit: int = 50,
     ) -> list[Event]:
+        if not _BS4_AVAILABLE:
+            log.warning("iaBilet fetcher requires bs4 (BeautifulSoup). Install with: pip install beautifulsoup4")
+            return []
+        
         if city not in CITY_URLS:
             return []
         

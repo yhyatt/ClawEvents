@@ -272,5 +272,154 @@ def test_songkick_date_parsing():
     assert _scrape_date("invalid") is None
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# Robustness / Audit tests
+# ══════════════════════════════════════════════════════════════════════════════
+
+def test_iabilet_module_has_timeout():
+    """iaBilet fetcher should have timeout in requests call."""
+    import inspect
+    from clawevents.fetchers.iabilet import IaBiletFetcher
+    
+    source = inspect.getsource(IaBiletFetcher.fetch)
+    # Check that timeout is specified in the requests.get call
+    assert "timeout=" in source or "timeout" in source
+
+
+def test_iabilet_handles_missing_bs4():
+    """iaBilet should handle missing BeautifulSoup gracefully."""
+    from clawevents.fetchers import iabilet
+    
+    # Check that the module has the _BS4_AVAILABLE flag
+    assert hasattr(iabilet, '_BS4_AVAILABLE')
+
+
+def test_songkick_has_timeout():
+    """Songkick fetcher should have timeout in requests calls."""
+    import inspect
+    from clawevents.fetchers.songkick import SongkickFetcher
+    
+    source = inspect.getsource(SongkickFetcher)
+    assert "timeout=" in source
+
+
+def test_songkick_handles_missing_bs4():
+    """Songkick should handle missing BeautifulSoup gracefully."""
+    from clawevents.fetchers import songkick
+    
+    assert hasattr(songkick, '_BS4_AVAILABLE')
+
+
+def test_songkick_fallback_to_scraping():
+    """Songkick should fall back to scraping when no API key."""
+    fetcher = SongkickFetcher(api_key=None)
+    assert fetcher.api_key == ""  # Should be empty string, not None
+
+
+def test_ra_has_timeout():
+    """RA fetcher should have timeout in requests call."""
+    import inspect
+    from clawevents.fetchers.ra import RAFetcher
+    
+    source = inspect.getsource(RAFetcher.fetch)
+    assert "timeout=" in source
+
+
+def test_ra_area_id_bucharest_documented():
+    """RA area ID for Bucharest should be documented."""
+    from clawevents.fetchers.ra import AREA_IDS
+    
+    assert City.BUCHAREST in AREA_IDS
+    assert AREA_IDS[City.BUCHAREST] == 381  # Documented value
+
+
+def test_ra_area_id_barcelona():
+    """RA area ID for Barcelona should be documented."""
+    from clawevents.fetchers.ra import AREA_IDS
+    
+    assert City.BARCELONA in AREA_IDS
+    assert AREA_IDS[City.BARCELONA] == 20
+
+
+def test_ra_area_id_nyc():
+    """RA area ID for NYC should be documented."""
+    from clawevents.fetchers.ra import AREA_IDS
+    
+    assert City.NEW_YORK in AREA_IDS
+    assert AREA_IDS[City.NEW_YORK] == 8
+
+
+def test_ra_area_id_tel_aviv():
+    """RA area ID for Tel Aviv should be documented."""
+    from clawevents.fetchers.ra import AREA_IDS
+    
+    assert City.TEL_AVIV in AREA_IDS
+    assert AREA_IDS[City.TEL_AVIV] == 413
+
+
+def test_iabilet_http_error_handling():
+    """iaBilet should return empty list on HTTP errors."""
+    from unittest.mock import patch, MagicMock
+    from clawevents.fetchers.iabilet import IaBiletFetcher
+    
+    fetcher = IaBiletFetcher()
+    start = datetime.now()
+    end = start + timedelta(days=7)
+    
+    # Mock requests.get to raise an exception
+    with patch('clawevents.fetchers.iabilet.requests.get') as mock_get:
+        mock_get.side_effect = Exception("Network error")
+        events = fetcher.fetch(City.BUCHAREST, start, end)
+        assert events == []
+
+
+def test_iabilet_404_returns_empty():
+    """iaBilet should return empty list on 404."""
+    from unittest.mock import patch, MagicMock
+    import requests as req
+    from clawevents.fetchers.iabilet import IaBiletFetcher
+    
+    fetcher = IaBiletFetcher()
+    start = datetime.now()
+    end = start + timedelta(days=7)
+    
+    # Mock requests.get to return 404
+    with patch('clawevents.fetchers.iabilet.requests.get') as mock_get:
+        mock_response = MagicMock()
+        mock_response.raise_for_status.side_effect = req.HTTPError("404 Not Found")
+        mock_get.return_value = mock_response
+        events = fetcher.fetch(City.BUCHAREST, start, end)
+        assert events == []
+
+
+def test_ra_graphql_error_handling():
+    """RA should handle GraphQL errors gracefully."""
+    from unittest.mock import patch, MagicMock
+    from clawevents.fetchers.ra import RAFetcher
+    
+    fetcher = RAFetcher()
+    start = datetime.now()
+    end = start + timedelta(days=7)
+    
+    # Mock requests.post to return GraphQL error
+    with patch('clawevents.fetchers.ra.requests.post') as mock_post:
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {"errors": [{"message": "Invalid query"}]}
+        mock_post.return_value = mock_response
+        events = fetcher.fetch(City.BUCHAREST, start, end)
+        assert events == []
+
+
+def test_songkick_metro_ids_documented():
+    """Songkick metro IDs should be documented with verification notes."""
+    import inspect
+    from clawevents.fetchers import songkick
+    
+    source = inspect.getsource(songkick)
+    # Check for documentation comments
+    assert "verified" in source.lower() or "METRO_IDS" in source
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

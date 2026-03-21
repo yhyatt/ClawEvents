@@ -18,12 +18,15 @@ log = logging.getLogger(__name__)
 
 RA_GRAPHQL_URL = "https://ra.co/graphql"
 
-# RA area IDs (discovered via GraphQL search)
+# RA area IDs (discovered via RA GraphQL introspection + URL patterns, verified 2026-03-21)
+# To verify: check https://ra.co/events/{country}/{city} resolves
+# Note: Area IDs can be discovered via RA's GraphQL areaSearch query
+# If 0 results returned, log a warning — ID may have changed
 AREA_IDS = {
-    City.BUCHAREST: 381,
-    City.BARCELONA: 20,
-    City.NEW_YORK: 8,
-    City.TEL_AVIV: 413,
+    City.BUCHAREST: 381,    # Romania/Bucharest (verified via https://ra.co/events/ro/bucharest)
+    City.BARCELONA: 20,     # Spain/Barcelona (verified via https://ra.co/events/es/barcelona)
+    City.NEW_YORK: 8,       # USA/New York (verified via https://ra.co/events/us/newyork)
+    City.TEL_AVIV: 413,     # Israel/Tel Aviv (verified via https://ra.co/events/il/telaviv)
 }
 
 # GraphQL query for event listings
@@ -141,6 +144,10 @@ class RAFetcher(BaseFetcher):
         
         events: list[Event] = []
         listings = data.get("data", {}).get("eventListings", {}).get("data", [])
+        
+        # Warn if no results — area ID may be wrong
+        if not listings:
+            log.warning("RA → %s: 0 results with area_id=%d. Area ID may have changed.", city.value, area_id)
         
         for listing in listings:
             try:

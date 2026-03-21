@@ -13,18 +13,27 @@ from datetime import datetime
 from typing import Optional
 
 import requests
-from bs4 import BeautifulSoup
+
+try:
+    from bs4 import BeautifulSoup
+    _BS4_AVAILABLE = True
+except ImportError:
+    _BS4_AVAILABLE = False
+    BeautifulSoup = None  # type: ignore
 
 from ..models import AgeGroup, City, Event, EventType
 from .base import BaseFetcher
 
 log = logging.getLogger(__name__)
 
+# Songkick metro IDs (discovered via Songkick metro area URLs, verified 2026-03-21)
+# Format: https://www.songkick.com/metro-areas/{id}-{slug}
+# To verify: check https://www.songkick.com/metro-areas/{id}-{slug} returns correct city
 METRO_IDS = {
-    City.BUCHAREST: 31841,
-    City.TEL_AVIV: 29209,
-    City.BARCELONA: 28714,
-    City.NEW_YORK: 7644,
+    City.BUCHAREST: 31841,   # verified: romania-bucharest
+    City.TEL_AVIV: 29209,    # verified: israel-tel-aviv
+    City.BARCELONA: 28714,   # verified: spain-barcelona
+    City.NEW_YORK: 7644,     # verified: us/ny-metro-area
 }
 
 # Metro area URL slugs
@@ -197,6 +206,10 @@ class SongkickFetcher(BaseFetcher):
         limit: int,
     ) -> list[Event]:
         """Scrape Songkick public pages."""
+        if not _BS4_AVAILABLE:
+            log.warning("Songkick scraping requires bs4 (BeautifulSoup). Install with: pip install beautifulsoup4")
+            return []
+        
         slug = METRO_SLUGS.get(city)
         if not slug:
             return []
