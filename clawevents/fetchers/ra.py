@@ -67,7 +67,8 @@ def _parse_ra_datetime(dt_str: Optional[str]) -> Optional[datetime]:
     try:
         # Handle the .000 milliseconds
         dt_str = dt_str.replace(".000", "")
-        return datetime.fromisoformat(dt_str)
+        dt = datetime.fromisoformat(dt_str)
+        return dt.replace(tzinfo=None)  # strip tz for consistent naive datetimes
     except ValueError:
         try:
             # Try with just the date
