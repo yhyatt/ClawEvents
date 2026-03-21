@@ -14,7 +14,7 @@
 <p align="center">
   One query across official city APIs, editorial sources (Time Out), and live ticketing platforms<br/>
   returns ranked, deduplicated results filtered by type, age group, and time of day —<br/>
-  across <strong>Tel Aviv</strong>, <strong>Barcelona</strong>, and <strong>New York</strong>.
+  across <strong>Tel Aviv</strong>, <strong>Barcelona</strong>, <strong>New York</strong>, and <strong>Bucharest</strong>.
 </p>
 
 <div align="center">
@@ -22,7 +22,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://github.com/yhyatt/clawevents)
 [![OpenClaw Skill](https://img.shields.io/badge/OpenClaw-Skill-red)](https://clawhub.ai/skills/clawevents)
-[![Cities](https://img.shields.io/badge/cities-Tel%20Aviv%20%7C%20Barcelona%20%7C%20NYC-brightgreen)](https://github.com/yhyatt/clawevents)
+[![Cities](https://img.shields.io/badge/cities-Tel%20Aviv%20%7C%20Barcelona%20%7C%20NYC%20%7C%20Bucharest-brightgreen)](https://github.com/yhyatt/clawevents)
 
 </div>
 
@@ -45,6 +45,7 @@ ClawEvents is designed to be invoked entirely by an AI agent. Install the skill 
 > *"What's on in Tel Aviv this weekend?"*
 > *"Find jazz concerts in Barcelona next week."*
 > *"Free family events in NYC on Saturday afternoon."*
+> *"What's happening in Bucharest on March 27?"*
 
 Your agent handles the rest — multi-source query, dedup, rank, and returns a clean list.
 
@@ -60,6 +61,7 @@ Your agent handles the rest — multi-source query, dedup, rank, and returns a c
 - **Tel Aviv** — TLV Municipality API (DigiTel), Eventbrite, Lev Cinema, Time Out IL
 - **Barcelona** — Ticketmaster, Eventbrite, Fever, Xceed (clubs/nightlife)
 - **New York** — Ticketmaster, Eventbrite, NYC Open Data, Fever
+- **Bucharest** — iaBilet.ro (Romanian ticketing), Songkick (concerts), RA (nightlife/electronic)
 
 </td>
 <td width="50%">
@@ -117,6 +119,12 @@ clawevents search --city barcelona new-york --days 3
 # Free family events, afternoon
 clawevents search --city tel-aviv --type family --age family --time afternoon --free
 
+# Evening concerts in Bucharest
+clawevents search --city bucharest --type concert --time evening --days 7
+
+# Nightlife in Bucharest this weekend (RA + Songkick)
+clawevents search --city bucharest --type nightlife --days 3
+
 # Evening concerts, adults, specific dates
 clawevents search --city tel-aviv barcelona --type concert --age adults --time evening \
   --from 2026-06-21 --to 2026-06-27
@@ -156,6 +164,16 @@ clawevents search --city new-york --type jazz --format json --limit 10
 | **NYC Open Data** | Free parks + city events | None |
 | **Fever** | Experiences, immersive | Playwright |
 
+### Bucharest 🇷🇴
+
+| Source | Coverage | Requires |
+|--------|----------|---------|
+| **iaBilet.ro** | Concerts, theatre, comedy, standup, exhibitions (dominant Romanian ticketing platform) | None (HTML scrape) |
+| **Songkick** | International + local concerts | None (HTML scrape) · `SONGKICK_API_KEY` (optional, more results) |
+| **Resident Advisor (RA)** | Electronic music, nightlife, club events (GraphQL API) | None |
+
+> **Note:** iaBilet.ro is the largest Romanian ticketing platform with 2,500+ events. RA area ID for Bucharest is **381** (verified). Songkick metro ID is **31841**.
+
 ---
 
 ## 🔑 API Keys
@@ -165,13 +183,15 @@ All keys are **free**:
 | Variable | Signup | Unlocks |
 |----------|--------|---------|
 | `TICKETMASTER_API_KEY` | [developer.ticketmaster.com](https://developer.ticketmaster.com) | Barcelona + NYC (230K+ events) |
-| `EVENTBRITE_TOKEN` | [eventbrite.com/platform/api](https://www.eventbrite.com/platform/api) | All 3 cities |
+| `EVENTBRITE_TOKEN` | [eventbrite.com/platform/api](https://www.eventbrite.com/platform/api) | All cities |
 | `TLV_API_KEY` | [apiportal.tel-aviv.gov.il](https://apiportal.tel-aviv.gov.il) | Official TLV events (optional) |
+| `SONGKICK_API_KEY` | [songkick.com/api_key_requests](https://www.songkick.com/api_key_requests) | More Songkick results (optional) |
 
 ```bash
 export TICKETMASTER_API_KEY="..."
 export EVENTBRITE_TOKEN="..."
-export TLV_API_KEY="..."   # optional
+export TLV_API_KEY="..."          # optional
+export SONGKICK_API_KEY="..."     # optional
 ```
 
 ---
@@ -180,7 +200,7 @@ export TLV_API_KEY="..."   # optional
 
 | Flag | Values | Default |
 |------|--------|---------|
-| `--city` / `-c` | `tel-aviv` `tlv` · `barcelona` `bcn` · `new-york` `nyc` | required |
+| `--city` / `-c` | `tel-aviv` `tlv` · `barcelona` `bcn` · `new-york` `nyc` · `bucharest` `buc` | required |
 | `--type` / `-t` | `jazz` `concert` `cinema` `theatre` `nightlife` `family` `comedy` `art` `sport` `festival` | all |
 | `--age` | `kids` `family` `adults` | all |
 | `--time` | `morning` `afternoon` `evening` `late-night` | all |
@@ -196,8 +216,11 @@ export TLV_API_KEY="..."   # optional
 
 ```
 ClawEventsEngine
+├── City Registry (city_registry.py)
+│   └── Declarative per-city config: fetchers, platforms, IDs — adding a city = data change only
 ├── Parallel fetchers (ThreadPoolExecutor, per city)
-│   ├── API-based    Ticketmaster · Eventbrite · TLV Municipality · NYC Open Data
+│   ├── API-based    Ticketmaster · Eventbrite · TLV Municipality · NYC Open Data · RA (GraphQL)
+│   ├── Scrape       iaBilet.ro · Songkick  (BeautifulSoup, graceful 403 fallback)
 │   └── Browser      Time Out IL · Fever · Xceed  (opt-in, requires Playwright)
 ├── Filter     city · type · age · time-of-day · date range · free
 ├── Dedup      same title + start time across sources → one result
@@ -214,12 +237,11 @@ from datetime import datetime, timedelta
 
 engine = ClawEventsEngine()
 events = engine.search(
-    cities=[City.TEL_AVIV],
-    event_types=[EventType.JAZZ],
-    start=datetime.now(),
-    end=datetime.now() + timedelta(days=7),
+    cities=[City.BUCHAREST],
+    event_types=[EventType.NIGHTLIFE, EventType.CONCERT],
+    start=datetime(2026, 3, 27),
+    end=datetime(2026, 3, 28),
     age_groups=[AgeGroup.ADULTS],
-    time_of_day=[TimeOfDay.EVENING],
     limit=10,
 )
 for e in events:
@@ -230,7 +252,23 @@ for e in events:
 
 ## 🧩 Extending
 
-Add a new city or source in three steps:
+New cities use the declarative city registry — no code changes needed for common fetchers:
+
+```python
+# city_registry.py — add a new city
+"berlin": CityConfig(
+    name="Berlin",
+    slug="berlin",
+    aliases=["berlin"],
+    country="DE",
+    timezone="Europe/Berlin",
+    event_fetchers=["songkick", "ra", "eventbrite"],
+    reservation_platforms=["thefork", "opentable"],
+    ...
+)
+```
+
+For a custom source:
 
 ```python
 # 1. Create clawevents/fetchers/my_source.py
