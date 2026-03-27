@@ -62,7 +62,12 @@ def _parse_dt_xceed(text: str) -> Optional[datetime]:
         try:
             dt = datetime.strptime(text, fmt)
             if dt.year == 1900:
-                dt = dt.replace(year=datetime.now().year)
+                now = datetime.now()
+                year = now.year
+                # If the parsed month/day is already past, roll to next year
+                if dt.month < now.month or (dt.month == now.month and dt.day < now.day):
+                    year += 1
+                dt = dt.replace(year=year)
             return dt
         except ValueError:
             continue
