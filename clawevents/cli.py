@@ -169,6 +169,37 @@ def run():
             print(f"   🔗 {e.url}")
         print()
 
+    # Append experience booking links for single-city searches
+    exp_block = _append_experience_links(cities, age_groups)
+    if exp_block:
+        print(exp_block)
+
+
+def _append_experience_links(cities: list, age_groups: list) -> str:
+    """
+    Generate experience booking links for single-city searches.
+    Uses clawtourism.experiences if available — fails silently otherwise.
+    """
+    if len(cities) != 1:
+        return ""
+    try:
+        import sys, os
+        # Try to import from clawtourism (sibling skill)
+        skills_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        clawtourism_path = os.path.join(skills_dir, "clawtourism")
+        if clawtourism_path not in sys.path:
+            sys.path.insert(0, clawtourism_path)
+        from clawtourism.experiences import get_experience_links, format_experience_links
+
+        city_name = cities[0].value.replace("-", " ").title()
+        kids = any(str(a).lower() in ("kids", "family") for a in age_groups)
+        links = get_experience_links(city_name, kids=kids)
+        if not links:
+            return ""
+        return "\n" + format_experience_links(city_name, links, kids=kids)
+    except Exception:
+        return ""
+
 
 if __name__ == "__main__":
     run()
