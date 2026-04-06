@@ -21,7 +21,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://github.com/yhyatt/clawevents)
-[![OpenClaw Skill](https://img.shields.io/badge/OpenClaw-Skill-red)](https://clawhub.ai/skills/clawevents)
+[![OpenClaw Skill](https://img.shields.io/badge/OpenClaw-Skill-red)](https://github.com/yhyatt/clawevents)
 [![Cities](https://img.shields.io/badge/cities-Tel%20Aviv%20%7C%20Barcelona%20%7C%20NYC%20%7C%20Bucharest-brightgreen)](https://github.com/yhyatt/clawevents)
 
 </div>
@@ -40,7 +40,7 @@
 
 ## 🦞 OpenClaw Friendly
 
-ClawEvents is designed to be invoked entirely by an AI agent. Install the skill from [ClaWHub](https://clawhub.ai/skills/clawevents), then just ask:
+ClawEvents is designed to be invoked entirely by an AI agent. Install the skill from [ClaWHub](https://github.com/yhyatt/clawevents), then just ask:
 
 > *"What's on in Tel Aviv this weekend?"*
 > *"Find jazz concerts in Barcelona next week."*
